@@ -1,0 +1,107 @@
+// Simple Synchronous RAM module with read and write operations
+module ram #(
+    parameter DATA_WIDTH = 8,
+    parameter ADDR_WIDTH = 4
+)(
+    input wire clk,
+    input wire rst,
+    input wire we,                     // Write Enable
+    input wire [ADDR_WIDTH-1:0] addr,  // Address bus
+    input wire [DATA_WIDTH-1:0] din,   // Data input
+    output reg [DATA_WIDTH-1:0] dout   // Data output
+);
+
+    // Memory declaration
+    reg [DATA_WIDTH-1:0] mem [0:2**ADDR_WIDTH-1];
+
+    always @(posedge clk) begin
+        if (rst) begin
+            dout <= 0;
+        end
+        else if (we) begin
+            mem[addr] <= din;    // Write operation
+            dout <= din;         // Optional: Output written data immediately
+        end
+        else begin
+            dout <= mem[addr];   // Read operation
+        end
+    end
+
+endmodule
+
+/ Testbench for the Simple Synchronous RAM module
+`timescale 1ns/1ps
+
+module ram_tb;
+
+    parameter DATA_WIDTH = 8;
+    parameter ADDR_WIDTH = 4;
+
+    reg clk;
+    reg rst;
+    reg we;
+    reg [ADDR_WIDTH-1:0] addr;
+    reg [DATA_WIDTH-1:0] din;
+    wire [DATA_WIDTH-1:0] dout;
+
+    // Instantiate the RAM module
+    ram #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .ADDR_WIDTH(ADDR_WIDTH)
+    ) uut (
+        .clk(clk),
+        .rst(rst),
+        .we(we),
+        .addr(addr),
+        .din(din),
+        .dout(dout)
+    );
+
+    // Clock generation
+    initial clk = 0;
+    always #5 clk = ~clk; // 100MHz clock
+
+    // Test sequence
+    initial begin
+        $display("Starting RAM Test...");
+        rst = 1; we = 0; addr = 0; din = 0;
+        #15;
+        rst = 0;
+
+        // Write pattern 0xAA to address 2
+        addr = 4'd2; din = 8'hAA; we = 1;
+        #10;
+        we = 0;
+
+        // Read from address 2
+        #10;
+        if (dout !== 8'hAA)
+            $display("ERROR: Address 2 expected 0xAA, got 0x%h", dout);
+        else
+            $display("PASS: Address 2 read 0x%h", dout);
+
+        // Write pattern 0x55 to address 5
+        addr = 4'd5; din = 8'h55; we = 1;
+        #10;
+        we = 0;
+
+        // Read from address 5
+        #10;
+        if (dout !== 8'h55)
+            $display("ERROR: Address 5 expected 0x55, got 0x%h", dout);
+        else
+            $display("PASS: Address 5 read 0x%h", dout);
+
+        // Read from address 0 (should be 0)
+        addr = 4'd0; we = 0;
+        #10;
+        if (dout !== 8'h00)
+            $display("ERROR: Address 0 expected 0x00, got 0x%h", dout);
+        else
+            $display("PASS: Address 0 read 0x%h", dout);
+
+        $display("RAM Test Completed.");
+        $stop;
+    end
+
+endmodule
